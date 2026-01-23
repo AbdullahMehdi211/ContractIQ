@@ -1,97 +1,80 @@
 # ContractIQ
 
 ## 📌 Overview
-This project is a **production-grade contract-aware claim validation system** built on Azure services. It ingests healthcare contracts (PDFs), extracts and normalizes rate tables, indexes them into Azure AI Search with vector embeddings, and validates pharmacy claims using deterministic rules with optional GPT-based explanations.
 
-The system follows **regulator-grade architecture principles**:
-- Deterministic logic for decisions
-- LLMs used only for explanation
-- Full traceability from claim → contract → rule → decision
+ContractIQ is a **production‑grade, contract‑aware claim validation system** built on Azure. It ingests healthcare contracts (PDFs), extracts and normalizes rate tables, indexes them using vector search, and validates pharmacy claims using **deterministic rules** with an optional **GPT explanation layer**.
+
+The system follows **regulator‑grade architecture principles**:
+
+* Deterministic logic for all financial decisions
+* LLMs used strictly for explanation (never decision‑making)
+* Full traceability from claim → contract → rule → outcome
 
 ---
 
-## 🧭 End-to-End Flow Diagram
+## 🧭 High‑Level Flow Diagram
 
 ```mermaid
-flowchart TD
-    A[Contract PDFs in Azure Blob Storage]
-    B[Ingestion Layer]
-    C[Azure Document Intelligence
-Layout Extraction]
-    D[Raw Layout JSON]
-    E[Table Extraction]
-    F[Extracted Tables JSON]
-    G[Normalization & Classification]
-    H[Normalized Rates JSON]
-    I[Search Doc Builder]
-    J[Search Documents JSON]
-    K[Azure OpenAI Embeddings]
-    L[Azure AI Search Vector Index]
-    M[Rates Search Plugin]
-    N[Claim Validation Engine]
-    O[Deterministic Justification Engine]
-    P[GPT Explanation Layer]
-    Q[Semantic Kernel Agent]
-    R[Final Claim Decision & Explanation]
-
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J
-    J --> K --> L
-    L --> M
-    M --> N --> O --> P
-    O --> Q
-    P --> Q
-    Q --> R
+flowchart LR
+    A[Contract PDFs] --> B[Ingestion & Extraction]
+    B --> C[Normalize Rates]
+    C --> D[Vector Index (Azure AI Search)]
+    D --> E[Claim Validation Engine]
+    E --> F[Deterministic Justification]
+    F --> G[GPT Explanation (Optional)]
+    G --> H[Final Claim Decision]
 ```
 
 ---
 
 ## 🏗️ System Architecture (Layered)
 
-### **Step 1–2: Ingestion & Layout Extraction**
-- PDFs stored in **Azure Blob Storage**
-- Azure Document Intelligence extracts layout, tables, and text
-- Output: `data/raw_layout/*.json`
+### **1. Ingestion & Extraction**
 
-### **Step 3: Table Extraction**
-- Tables extracted from layout JSON
-- Output: `data/extracted_tables/*_tables.json`
+* Contracts stored in **Azure Blob Storage**
+* **Azure AI Document Intelligence** extracts tables and layout
+* Output: structured JSON artifacts
 
-### **Step 4: Classification & Normalization**
-- Detects:
-  - Non‑Specialty base rate tables
-  - Specialty category tables (IVIG, Hemophilia, etc.)
-- Produces normalized, machine‑readable rates
-- Output: `data/normalized_rates/rates_normalized.json`
+### **2. Normalization & Classification**
 
-### **Step 5: Search Document Construction**
-- Each rate → one search document
-- Adds structured fields + human‑readable text
-- Output: `data/search_docs/rate_search_docs.json`
+* Identifies non‑specialty and specialty rate tables
+* Produces normalized, machine‑readable rate records
 
-### **Step 6–7: Vector Indexing (Azure AI Search)**
-- Azure AI Search index with:
-  - Filterable metadata
-  - Searchable text
-  - Vector field `text_vector` (1536‑dim)
-- Embeddings generated using **Azure OpenAI**
-- Documents uploaded to index `contract-rates`
+### **3. Search Indexing (Vector + Hybrid)**
+
+* Normalized rates indexed into **Azure AI Search**
+* Uses **Azure OpenAI embeddings** for semantic retrieval
+* Supports keyword, vector, and hybrid search
+
+### **4. Claim Validation Engine**
+
+* Retrieves best‑matching contract rate
+* Calculates expected reimbursement
+* Computes variance and decision (OK / MISMATCH)
+
+### **5. Justification & Explanation**
+
+* **Deterministic justification** for audit and compliance
+* Optional **GPT explanation** for human‑readable summaries
+
+### **6. Semantic Kernel Agent**
+
+* Orchestrates end‑to‑end flow using tools/plugins
+* Produces a single structured response for APIs or UI
 
 ---
 
-## 🧮 Claim Validation Engine (Step 9A)
+## 🧮 Claim Validation (Deterministic Core)
 
-### Deterministic Logic (Regulator‑Grade)
-- Input: ClaimLine
-- Retrieves best matching contract rate via hybrid search
-- Calculates expected reimbursement
-- Computes variance
-- Outputs:
-  - OK / MISMATCH
-  - Expected vs Paid
-  - Applied rule
+* Input: Claim details
+* Output:
 
-### Deterministic Justification Engine
-Produces structured, auditable explanations:
+  * Status (OK / MISMATCH)
+  * Expected vs Paid amount
+  * Applied contract rule
+
+Example deterministic justification:
+
 ```json
 {
   "status": "MISMATCH",
@@ -103,36 +86,32 @@ Produces structured, auditable explanations:
 }
 ```
 
-This layer is **mandatory for compliance**.
+This layer is the **source of truth** and is mandatory for compliance.
 
 ---
 
-## 🤖 GPT Explanation Layer (Step 9B)
+## 🤖 GPT Explanation Layer
 
-- Consumes deterministic outputs only
-- Generates human‑readable narrative
-- Does **not** influence decisions
-
-Example:
-> "The claim was underpaid by $360 because the Medicare IVIG specialty rule applies an 18% Brand WAC discount with no dispensing fees."
+* Consumes deterministic outputs only
+* Generates natural‑language explanations
+* Does **not** influence calculations or decisions
 
 Used for:
-- Support teams
-- Business users
-- Faster understanding
+
+* Support teams
+* Business users
+* Faster understanding of outcomes
 
 ---
 
-## 🧠 Semantic Kernel Agent (Option 10D)
+## ☁️ Azure Services Used
 
-The SK Agent orchestrates:
-1. Claim intake
-2. Rate retrieval plugin
-3. Validation engine
-4. Deterministic justification
-5. GPT explanation
-
-Final output is a **single coherent response** suitable for APIs or UI.
+* **Azure Blob Storage** – Stores contract PDFs and intermediate artifacts
+* **Azure AI Document Intelligence** – Extracts structured data from contracts
+* **Azure OpenAI (Embeddings)** – Generates vectors for semantic search
+* **Azure AI Search** – Vector, keyword, and hybrid rate retrieval
+* **Azure OpenAI (GPT‑4o)** – Human‑readable explanation layer
+* **Azure Key Vault (Recommended)** – Secure secret management for production
 
 ---
 
@@ -141,13 +120,13 @@ Final output is a **single coherent response** suitable for APIs or UI.
 ```
 ContractIQ/
 │
-├── ingestion/            # Blob + Document Intelligence
-├── normalization/        # Table extraction & rate normalization
-├── search/               # Index creation, embedding, upload, tests
-├── claims/               # Claim models, calculators, parsers
-├── plugins/              # Search & claim validation plugins
+├── ingestion/            # Contract ingestion & extraction
+├── normalization/        # Table parsing & rate normalization
+├── search/               # Index creation, embedding, retrieval
+├── claims/               # Claim models & calculators
+├── plugins/              # Search & validation plugins
 ├── agent/                # Semantic Kernel orchestration
-├── data/                 # All intermediate JSON artifacts
+├── data/                 # Intermediate JSON artifacts
 ├── .env                  # Azure configuration
 └── requirements.txt
 ```
@@ -155,21 +134,8 @@ ContractIQ/
 ---
 
 ## ✅ Key Design Principles
-- **LLMs never make financial decisions**
-- **All decisions are reproducible & auditable**
-- **Search + Vector hybrid for accuracy**
-- **Clear separation of concerns**
 
----
-
-## 🚀 Next Possible Enhancements
-- Evidence packs with PDF page references
-- Batch claim validation
-- REST API / UI dashboard
-- Human‑in‑the‑loop review workflows
-
----
-
-## 🏁 Final Note
-This architecture mirrors how **real healthcare, fintech, and insurance platforms** operate in production. You now have a strong foundation suitable for enterprise deployment, demos, or portfolio use.
-
+* LLMs never make financial decisions
+* All outcomes are reproducible and auditable
+* Hybrid (keyword + vector) search for accuracy
+* Clear separation of concerns across layers
