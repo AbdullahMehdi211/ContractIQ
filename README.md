@@ -12,17 +12,37 @@ The system follows **regulator‑grade architecture principles**:
 
 ---
 
-## 🧭 High‑Level Flow Diagram
+## 🧭 End-to-End Flow Diagram
 
 ```mermaid
-flowchart LR
-    A[Contract PDFs] --> B[Ingestion & Extraction]
-    B --> C[Normalize Rates]
-    C --> D[Vector Index (Azure AI Search)]
-    D --> E[Claim Validation Engine]
-    E --> F[Deterministic Justification]
-    F --> G[GPT Explanation (Optional)]
-    G --> H[Final Claim Decision]
+flowchart TD
+    A[Contract PDFs in Azure Blob Storage]
+    B[Ingestion Layer]
+    C[Azure Document Intelligence
+Layout Extraction]
+    D[Raw Layout JSON]
+    E[Table Extraction]
+    F[Extracted Tables JSON]
+    G[Normalization & Classification]
+    H[Normalized Rates JSON]
+    I[Search Doc Builder]
+    J[Search Documents JSON]
+    K[Azure OpenAI Embeddings]
+    L[Azure AI Search Vector Index]
+    M[Rates Search Plugin]
+    N[Claim Validation Engine]
+    O[Deterministic Justification Engine]
+    P[GPT Explanation Layer]
+    Q[Semantic Kernel Agent]
+    R[Final Claim Decision & Explanation]
+
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J
+    J --> K --> L
+    L --> M
+    M --> N --> O --> P
+    O --> Q
+    P --> Q
+    Q --> R
 ```
 
 ---
